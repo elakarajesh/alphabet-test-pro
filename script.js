@@ -1,121 +1,113 @@
 let score = 0;
-let timeLeft;
+let timeLeft = 0;
 let timer;
-let correct = 0;
-let wrong = 0;
 let currentAnswer = "";
 
-const alpha = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
 
-function startGame(){
- score = 0; correct = 0; wrong = 0;
- document.getElementById("game").classList.remove("hidden");
- document.getElementById("result").classList.add("hidden");
- timeLeft = document.getElementById("examMode").value === "bank" ? 1200 :
-            document.getElementById("timeInput").value * 60;
- startTimer();
- nextQuestion();
+function startGame() {
+  score = 0;
+  document.getElementById("score").innerText = "Score: 0";
+  document.getElementById("settings")?.classList?.add("hidden");
+
+  document.getElementById("game").classList.remove("hidden");
+  document.getElementById("result").classList.add("hidden");
+
+  timeLeft = document.getElementById("timeInput").value * 60;
+  startTimer();
+  nextQuestion();
 }
 
-function startTimer(){
- timer = setInterval(()=>{
-  if(timeLeft<=0) return endGame();
-  timeLeft--;
-  document.getElementById("timer").innerText = 
-   `Time: ${Math.floor(timeLeft/60)}:${(timeLeft%60).toString().padStart(2,'0')}`;
- },1000);
+function startTimer() {
+  clearInterval(timer);
+  timer = setInterval(() => {
+    if (timeLeft <= 0) {
+      endGame();
+    }
+    timeLeft--;
+    document.getElementById("timer").innerText =
+      "Time: " + Math.floor(timeLeft / 60) + ":" + (timeLeft % 60).toString().padStart(2, "0");
+  }, 1000);
 }
 
-function nextQuestion(){
- document.getElementById("feedback").innerText="";
- document.getElementById("answer").value="";
+function nextQuestion() {
+  document.getElementById("feedback").innerText = "";
+  document.getElementById("answer").value = "";
 
- let types = ["ltr","rtl","odd","even","alphaNum","numAlpha"];
- let mode = document.getElementById("questionMode").value;
- let type = mode==="mixed" ? types[Math.floor(Math.random()*types.length)] : types[0];
- generate(type);
+  let mode = document.getElementById("examMode").value;
+
+  if (mode === "button") {
+    generateButtonQuestion();
+    document.getElementById("answer").classList.add("hidden");
+  } else {
+    generateTypingQuestion();
+    document.getElementById("buttons").classList.add("hidden");
+    document.getElementById("answer").classList.remove("hidden");
+  }
 }
 
-function generate(type){
- let i = Math.floor(Math.random()*26);
- let L = alpha[i];
-
- switch(type){
-  case "ltr":
-   currentAnswer = i+1;
-   q(`Position of ${L} (L→R)?`); break;
-  case "rtl":
-   currentAnswer = 26-i;
-   q(`Position of ${L} (R→L)?`); break;
-  case "odd":
-   currentAnswer = (i+1)%2?"YES":"NO";
-   q(`Is ${L} Odd position?`); break;
-  case "even":
-   currentAnswer = (i+1)%2===0?"YES":"NO";
-   q(`Is ${L} Even position?`); break;
-  case "alphaNum":
-   currentAnswer = i+1;
-   q(`Alphabet → Number: ${L}`); break;
-  case "numAlpha":
-   let n = Math.floor(Math.random()*26)+1;
-   currentAnswer = alpha[n-1];
-   q(`Number → Alphabet: ${n}`); break;
- }
+function generateTypingQuestion() {
+  let i = Math.floor(Math.random() * 26);
+  currentAnswer = i + 1;
+  document.getElementById("question").innerText =
+    "Alphabet → Number : " + alphabet[i];
 }
 
-function q(text){ document.getElementById("question").innerText=text; }
+function generateButtonQuestion() {
+  document.getElementById("buttons").classList.remove("hidden");
 
-document.getElementById("answer").addEventListener("keydown",e=>{
- if(e.key==="Enter") check();
+  let n = Math.floor(Math.random() * 26) + 1;
+  currentAnswer = alphabet[n - 1];
+  document.getElementById("question").innerText = n + "th letter";
+
+  let btnDiv = document.getElementById("buttons");
+  btnDiv.innerHTML = "";
+
+  let shuffled = [...alphabet].sort(() => Math.random() - 0.5);
+
+  shuffled.forEach(letter => {
+    let btn = document.createElement("button");
+    btn.innerText = letter;
+    btn.onclick = () => checkButtonAnswer(btn, letter);
+    btnDiv.appendChild(btn);
+  });
+}
+
+document.getElementById("answer").addEventListener("keydown", function (e) {
+  if (e.key === "Enter") checkTypingAnswer();
 });
 
-function check(){
- let ans = document.getElementById("answer").value.trim().toUpperCase();
- let neg = parseFloat(document.getElementById("negative").value);
-
- if(ans==currentAnswer){
-  score++; correct++;
-  document.getElementById("correctSound").play();
-  fb("✅ Correct");
- } else {
-  score -= neg; wrong++;
-  document.getElementById("wrongSound").play();
-  fb(`❌ Wrong (${currentAnswer})`);
- }
- document.getElementById("score").innerText = `Score: ${score.toFixed(2)}`;
- setTimeout(nextQuestion,600);
+function checkTypingAnswer() {
+  let ans = document.getElementById("answer").value.trim();
+  if (ans == currentAnswer) {
+    score++;
+    document.getElementById("correctSound").play();
+    document.getElementById("feedback").innerText = "Correct";
+  } else {
+    document.getElementById("wrongSound").play();
+    document.getElementById("feedback").innerText = "Wrong";
+  }
+  document.getElementById("score").innerText = "Score: " + score;
+  setTimeout(nextQuestion, 500);
 }
 
-function fb(msg){ document.getElementById("feedback").innerText=msg; }
-
-function endGame(){
- clearInterval(timer);
- document.getElementById("timeSound").play();
- document.getElementById("game").classList.add("hidden");
- document.getElementById("result").classList.remove("hidden");
-
- let data = {
-  score:score.toFixed(2),
-  correct, wrong,
-  date:new Date().toLocaleString()
- };
-
- saveScore(data);
- showResult(data);
+function checkButtonAnswer(btn, letter) {
+  if (letter === currentAnswer) {
+    btn.classList.add("correct");
+    score++;
+    document.getElementById("correctSound").play();
+  } else {
+    btn.classList.add("wrong");
+    document.getElementById("wrongSound").play();
+  }
+  document.getElementById("score").innerText = "Score: " + score;
+  setTimeout(nextQuestion, 600);
 }
 
-function saveScore(data){
- let board = JSON.parse(localStorage.getItem("leaderboard"))||[];
- board.push(data);
- board.sort((a,b)=>b.score-a.score);
- localStorage.setItem("leaderboard",JSON.stringify(board.slice(0,5)));
-}
-
-function showResult(d){
- document.getElementById("final").innerHTML=
-  `Score: ${d.score}<br>Correct: ${d.correct}<br>Wrong: ${d.wrong}`;
-
- let list = JSON.parse(localStorage.getItem("leaderboard"))||[];
- document.getElementById("leaderboard").innerHTML =
-  list.map(x=>`<li>${x.score} - ${x.date}</li>`).join("");
+function endGame() {
+  clearInterval(timer);
+  document.getElementById("game").classList.add("hidden");
+  document.getElementById("result").classList.remove("hidden");
+  document.getElementById("final").innerText = "Final Score: " + score;
+  document.getElementById("timeSound").play();
 }
